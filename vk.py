@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from macpath import dirname
 
 import requests
 import os
@@ -26,11 +27,6 @@ class App_data():
               "display="+display+"&" \
               "response_type="+response_type
 
-    def get_user_data(self):
-        self.login = input("Input login:")
-        self.password = getpass.getpass("Input password:")
-
-
     def parse_content(self, content):
         pos_lhref = content.find("action")
         start = content.find("\"", pos_lhref+1) + 1
@@ -48,10 +44,9 @@ class App_data():
         temp_lst = url.split("access_token=")
         if len(temp_lst) >= 2:
             self.access_token = temp_lst[1].split("&")[0]
-            return
+            return 0
         else:
-            print ("Error in authorization.")
-            exit(-1)
+            return -1
 
 
 ####################################################################
@@ -65,8 +60,7 @@ class Loader():
         if ("response" in json.keys()):
             return json["response"][0]["uid"]
         else:
-            print ("Can't find user " + user)
-            exit()
+            return -1
 
 
     """
@@ -78,6 +72,37 @@ class Loader():
         result = requests.get(req)
         return result.json()
 
+
+    """
+    Process of authorization
+    """
+    def autorize(self, user, password, id):
+        self.app = App_data()
+        self.id = id
+
+        # auth part #####
+        s = requests.session()
+        req = "https://login.vk.com/?act=login&email="+user+"&pass="+password
+        s.post(req)
+        r = s.get(self.app.request)
+        url = ""
+        content = r.content.decode("cp866")
+        if not self.app.already_in_use(content):
+            link = self.app.parse_content(content)
+            r = s.get(link)
+            url = r.url
+        else:
+             url = r.url
+        val = self.app.get_access_token(url)
+        # end auth part #####
+        if val == -1:
+            return -1
+
+        self.app.uid = self.get_uid(self.id, self.app.access_token)
+        if self.app.uid == -1:
+            return -1
+
+        return 0
 
 ####################################################################
 class Photo_loader(Loader):
@@ -161,18 +186,15 @@ class Music_loader(Loader):
     """
     def get(self, uid, token):
         parms = "uid="+str(uid)
-        json = self.send_request("audio.get", parms, token)["response"]
-        self.audiolist = []
-        for elem in json:
-            self.audiolist.append([elem["artist"], elem["title"], elem["url"]])
-
-
-    """
-    Returns count tracks of user
-    """
-    def get_audio_count(self, uid, token):
-        self.get(uid, token)
-        return len(self.audiolist)
+        json = self.send_request("audio.get", parms, token)
+        if "response" in json.keys():
+            json = json["response"]
+            self.audiolist = []
+            for elem in json:
+                self.audiolist.append([elem["artist"], elem["title"], elem["url"], elem["duration"]])
+            return 0
+        else:
+            return -1
 
 
     """
@@ -187,10 +209,10 @@ class Music_loader(Loader):
             for elem in self.audiolist:
                 counter += 1
                 artist = ""
-                if (len(elem[0])>40): artist = elem[0][:40]+"..."
+                if (len(elem[0])>25): artist = elem[0][:25]+"..."
                 else: artist = elem[0]
                 title = ""
-                if (len(elem[1])>40): title = elem[0][:40]+"..."
+                if (len(elem[1])>25): title = elem[0][:25]+"..."
                 else: title = elem[1]
 
                 name = dirname+"/"+artist+"-"+title+".mp3"
@@ -201,6 +223,22 @@ class Music_loader(Loader):
             print ("Nothing to load.")
             return
 
+
+    """
+    Loads all tracks from lst;
+    lst-structure: one element is list with format: 1 - track name; 2 - url
+    """
+    def load_tracks_from_list(self, lst, dirName):
+        if os.path.exists(dirName):
+            old = os.getcwd()
+            os.chdir(dirName)
+            for elem in lst:
+                urllib.request.urlretrieve(str(elem[1]), elem[0]+".mp3")
+            print ("Saving is complete.")
+            os.chdir(old)
+            return 0
+
+        return -1
 
     """
     Returns list of tracks provided by audio.search method
@@ -216,41 +254,37 @@ class Music_loader(Loader):
         for i in range(1, len(json)):
             self.audiolist.append([json[i]["artist"], json[i]["title"], json[i]["url"], json[i]["duration"]])
 
-        print ("Tracks count = " + str(len(self.audiolist)))
 
+    """
+    Returns list in format: 1 - track name; 2 - duration; 3 - url
+    """
+    def get_list_for_gui(self):
+        if len(self.audiolist) > 0:
+            lst = []
+            for elem in self.audiolist:
+                tmp_lst = []
+
+                artist = ""
+                if (len(elem[0])>25): artist = elem[0][:25]+"..."
+                else: artist = elem[0]
+                title = ""
+                if (len(elem[1])>25): title = elem[0][:25]+"..."
+                else: title = elem[1]
+                tmp_lst.append(artist+" - " + title)
+
+                dur = float(elem[3]) / 60.0
+                tmp_lst.append("%.2f" % dur) # duration
+
+                tmp_lst.append(elem[2]) # url
+                lst.append(tmp_lst)
+
+            return lst
+        return []
 
 ####################################################################
 if __name__=="__main__":
     try:
-        app = App_data()
-        app.get_user_data()
+        pass
 
-        # auth part #####
-        s = requests.session()
-        req = "https://login.vk.com/?act=login&email="+app.login+"&pass="+app.password
-        s.post(req)
-        r = s.get(app.request)
-        url = ""
-        content = r.content.decode("cp866")
-        #print (content)
-        if not app.already_in_use(content):
-            link = app.parse_content(content)
-            r = s.get(link)
-            url = r.url
-        else:
-             url = r.url
-        app.get_access_token(url)
-        # end auth part #####
-
-        loader = Loader()
-        app.uid = loader.get_uid("", app.access_token)
-        #photo = Photo_loader()
-        #photo.get_all_from_albums(app.uid, app.access_token)
-        #photo.save_all("photos")
-
-        music = Music_loader()
-        music.get(app.uid, app.access_token)
-        music.load_all_audio("music")
-        #music.search_by_name("Nirvana", app.access_token)
     except KeyboardInterrupt:
         print ("Normal exit")
