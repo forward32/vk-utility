@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from signal import alarm
 
 import sys
 import vk
 from PyQt4 import QtCore, QtGui
+import threading
 #######################################################################################################################
 #######################################################################################################################
 class AuthForm(QtGui.QWidget):
@@ -97,10 +97,12 @@ class Form(QtGui.QWidget):
     def __init__(self):
         QtGui.QWidget.__init__(self)
         self.track_dict = {}
+        self.music = vk.Music_loader()
         self.loader = vk.Loader()
         self.setWindowTitle("Утилита для ВКонтакте")
         self.setWindowIcon(QtGui.QIcon("icon.jpg"))
         self.setGeometry(600,300,600,500)
+        self.lbl_progress = QtGui.QLabel("")
 
         # set form to center of screen
         geom = QtGui.QApplication.desktop().screenGeometry()
@@ -117,14 +119,21 @@ class Form(QtGui.QWidget):
         self.lbl_count = QtGui.QLabel("Всего треков: 0")
         layout_lbl = QtGui.QHBoxLayout()
         layout_lbl.addWidget(self.lbl_count)
+        layout_lbl.addWidget(self.lbl_progress)
 
         btn_exit = QtGui.QPushButton("Выйти")
         btn_exit.clicked.connect(self.to_exit_clicked)
-        btn_save = QtGui.QPushButton("Скачать выделенные")
-        btn_save.clicked.connect(self.to_save_clicked)
+        self.btn_save = QtGui.QPushButton("Скачать выделенные")
+        self.btn_save.clicked.connect(self.to_save_clicked)
+        self.btn_save_all = QtGui.QPushButton("Скачать все")
+        self.btn_save_all.clicked.connect(self.to_save_all_clicked)
+        btn_cancel = QtGui.QPushButton("Отменить загрузку")
+        btn_cancel.clicked.connect(self.to_cancel_clicked)
 
         layout_btns = QtGui.QHBoxLayout()
-        layout_btns.addWidget(btn_save)
+        layout_btns.addWidget(self.btn_save)
+        layout_btns.addWidget(self.btn_save_all)
+        layout_btns.addWidget(btn_cancel)
         layout_btns.addWidget(btn_exit)
 
         layout_form = QtGui.QVBoxLayout(self)
@@ -145,8 +154,6 @@ class Form(QtGui.QWidget):
                     self.lst_widgets.setItemWidget(lst_item, custom_item)
                     self.track_dict[counter] = elem[2] # saved url to track
                     counter += 1
-                else:
-                    print ("Pass one track")
             self.lbl_count.setText("Всего треков: " + str(len(all_music)))
 
     def to_save_clicked(self):
@@ -162,16 +169,40 @@ class Form(QtGui.QWidget):
             return
 
         dirName = str(QtGui.QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения"))
-        self.load_tracks(for_loading, dirName)
+        if dirName != "":
+            thr = threading.Thread(target=self.load_tracks, args=(for_loading, dirName))
+            thr.start()
 
-    def load_tracks(self, lst, dir):
-        music = vk.Music_loader()
-        if music.load_tracks_from_list(lst, dir) == -1:
-            QtGui.QMessageBox.warning(self, "Ошибка", "Ошибка при сохранении. Убедитесь в существовании выбраной папки.")
+    def to_save_all_clicked(self):
+        for_loading = []
+        for i in range(self.lst_widgets.count()):
+            item = self.lst_widgets.item(i)
+            wgt = self.lst_widgets.itemWidget(item)
+            for_loading.append([wgt.name, self.track_dict[i]])
 
+        dirName = str(QtGui.QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения"))
+        if dirName != "":
+            thr = threading.Thread(target=self.load_tracks, args=(for_loading, dirName))
+            thr.start()
+
+    def to_cancel_clicked(self):
+        self.music.work = False
 
     def to_exit_clicked(self):
+        self.music.work = False
         sys.exit(0)
+
+    def load_tracks(self, lst, dir):
+        self.btn_save_all.setEnabled(False)
+        self.btn_save.setEnabled(False)
+
+        self.music.work = True
+        val = self.music.load_tracks_from_list(lst, dir, self.lbl_progress)
+        if val == -1:
+            QtGui.QMessageBox.warning(self, "Ошибка", "Ошибка при сохранении. Убедитесь в существовании выбраной папки.")
+
+        self.btn_save_all.setEnabled(True)
+        self.btn_save.setEnabled(True)
 #######################################################################################################################
 #######################################################################################################################
 if __name__ == "__main__":
@@ -179,7 +210,6 @@ if __name__ == "__main__":
 
     auth = AuthForm()
     auth.show()
-
     mainForm = Form()
 
     app.exec()

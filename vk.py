@@ -179,6 +179,7 @@ class Music_loader(Loader):
     def __init__(self):
         self.audiolist = []
         self.max_sound_count = 100
+        self.work = False
 
 
     """
@@ -228,17 +229,27 @@ class Music_loader(Loader):
     Loads all tracks from lst;
     lst-structure: one element is list with format: 1 - track name; 2 - url
     """
-    def load_tracks_from_list(self, lst, dirName):
+    def load_tracks_from_list(self, lst, dirName, lbl):
         if os.path.exists(dirName):
             old = os.getcwd()
             os.chdir(dirName)
+
+            cnt = 1
+            size = len(lst)
             for elem in lst:
-                urllib.request.urlretrieve(str(elem[1]), elem[0]+".mp3")
-            print ("Saving is complete.")
+                if self.work:
+                    lbl.setText("Скачиваю трек " + str(cnt) + " из " + str(size) + "...")
+                    urllib.request.urlretrieve(str(elem[1]), elem[0]+".mp3")
+                    cnt += 1
+                else:
+                    break
+
+            lbl.setText("")
             os.chdir(old)
             return 0
 
         return -1
+
 
     """
     Returns list of tracks provided by audio.search method
