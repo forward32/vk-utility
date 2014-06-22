@@ -51,6 +51,10 @@ class App_data():
 
 ####################################################################
 class Loader():
+    def __init__(self):
+        self.app = App_data()
+        self.id = ""
+
     """
     Returns uid of user by username
     """
@@ -77,7 +81,6 @@ class Loader():
     Process of authorization
     """
     def autorize(self, user, password, id):
-        self.app = App_data()
         self.id = id
 
         # auth part #####
@@ -178,7 +181,8 @@ class Photo_loader(Loader):
 class Music_loader(Loader):
     def __init__(self):
         self.audiolist = []
-        self.max_sound_count = 100
+        self.max_sound_count = 50
+        self.offset = 0
         self.work = False
 
 
@@ -186,6 +190,7 @@ class Music_loader(Loader):
     Returns list of available audio of user
     """
     def get(self, uid, token):
+        self.audiolist = []
         parms = "uid="+str(uid)
         json = self.send_request("audio.get", parms, token)
         if "response" in json.keys():
@@ -255,11 +260,11 @@ class Music_loader(Loader):
     Returns list of tracks provided by audio.search method
     """
     def search_by_name(self, name, token):
-        pamrs = "q="+name+"&auto_complete=1&count="+str(self.max_sound_count)
+        self.audiolist = []
+        pamrs = "q="+name+"&auto_complete=1&count="+str(self.max_sound_count)+"&offset="+str(self.offset)
         json = self.send_request("audio.search", pamrs, token)
         if ("response" in json.keys()): json = json["response"]
         else:
-            print ("Search not given results.")
             return
 
         for i in range(1, len(json)):
