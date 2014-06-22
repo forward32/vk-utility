@@ -49,41 +49,33 @@ class AuthForm(QtGui.QWidget):
                 QtGui.QMessageBox.warning(self, "Ошибка авторизации", ("Неверный ввод данных.\n"
                                                  "Проверьте правильность ввода данных и повторите попытку."))
                 return
-            QtGui.QMessageBox.information(self, "Авторизация пройдена", "Добро пожаловать.")
-
+			
+            auth.hide()
+			
             mainForm.musicForm.loader = loader
-            mainForm.searchForm.loader = loader
-            music = vk.Music_loader()
-            val = music.get(mainForm.musicForm.loader.app.uid, mainForm.musicForm.loader.app.access_token)
-            if val == -1:
-                QtGui.QMessageBox.warning(self, "Ошибка доступа", ("Не найдено треков в открытом доступе по адресу "                                                                  +id_name +"."))
-                return
-
-            auth.close()
-            lst = music.get_list_for_gui()
-            mainForm.musicForm.set_music_content(lst)
+            mainForm.searchForm.loader = loader			
+            mainForm.musicForm.set_music_content()
             mainForm.show()
-
         else:
-            QtGui.QMessageBox.warning(self, "Неверный ввод", "Оба поля должны быть заполнены.")
+            QtGui.QMessageBox.warning(self, "Неверный ввод", "Все поля должны быть заполнены.")
 
     def to_cancel_clicked(self):
         sys.exit(0)
 #######################################################################################################################
 #######################################################################################################################
 class OneItem(QtGui.QWidget):
-    def __init__(self, name, duration):
+    def __init__(self, track_name, duration):
         QtGui.QWidget.__init__(self)
-        self.name = name
+        self.track = track_name
 
         lbl_icon = QtGui.QLabel(self)
         lbl_icon.setGeometry(0,0,30,20)
-        pixmap = QtGui.QPixmap("track.png")
-        scalled = pixmap.scaled(lbl_icon.width(), lbl_icon.height(), QtCore.Qt.KeepAspectRatio)
-        lbl_icon.setPixmap(scalled)
+        pix = QtGui.QPixmap("track.png")
+        scalled_pix = pix.scaled(lbl_icon.width(), lbl_icon.height(), QtCore.Qt.KeepAspectRatio)
+        lbl_icon.setPixmap(scalled_pix)
 
         lbl_name = QtGui.QLabel(self)
-        lbl_name.setText(name)
+        lbl_name.setText(self.track)
         lbl_name.setGeometry(50,0,350,20)
 
         lbl_duration = QtGui.QLabel(self)
@@ -136,18 +128,24 @@ class UserMusic(QtGui.QWidget):
 
 
     # all_music: 1 - track name; 2 - duration (min:sec); 3 - url
-    def set_music_content(self, all_music):
-        if len(all_music) > 0:
-            counter = 0
-            for elem in all_music:
-                if len(elem) == 3:
-                    custom_item = OneItem(elem[0], elem[1])
-                    lst_item = QtGui.QListWidgetItem()
-                    self.lst_widgets.addItem(lst_item)
-                    self.lst_widgets.setItemWidget(lst_item, custom_item)
-                    self.track_dict[counter] = elem[2] # saved url to track
-                    counter += 1
-            self.lbl_count.setText("Всего треков: " + str(len(all_music)))
+    def set_music_content(self):
+        self.lst_widgets.clear()
+		
+        val = self.music.get(self.loader.app.uid, self.loader.app.access_token)
+        if val == -1:
+            return -1
+ 
+        all_music = self.music.get_list_for_gui()
+        counter = 0
+        for elem in all_music:
+            if len(elem) == 3:
+                custom_item = OneItem(elem[0], elem[1])
+                lst_item = QtGui.QListWidgetItem()
+                self.lst_widgets.addItem(lst_item)
+                self.lst_widgets.setItemWidget(lst_item, custom_item)
+                self.track_dict[counter] = elem[2] # saved url to track
+                counter += 1
+        self.lbl_count.setText("Всего треков: " + str(len(all_music)))
 
     def to_save_clicked(self):
         for_loading = []
@@ -155,7 +153,7 @@ class UserMusic(QtGui.QWidget):
             item = self.lst_widgets.item(i)
             wgt = self.lst_widgets.itemWidget(item)
             if wgt.chbox.isChecked():
-                for_loading.append([wgt.name, self.track_dict[i]])
+                for_loading.append([wgt.track, self.track_dict[i]])
 
         if len(for_loading) == 0:
             QtGui.QMessageBox.warning(self, "Ошибка выбора", "Не выбран ни один трек.")
@@ -171,7 +169,7 @@ class UserMusic(QtGui.QWidget):
         for i in range(self.lst_widgets.count()):
             item = self.lst_widgets.item(i)
             wgt = self.lst_widgets.itemWidget(item)
-            for_loading.append([wgt.name, self.track_dict[i]])
+            for_loading.append([wgt.track, self.track_dict[i]])
 
         dirName = str(QtGui.QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения"))
         if dirName != "":
@@ -183,7 +181,10 @@ class UserMusic(QtGui.QWidget):
 
     def to_exit_clicked(self):
         self.music.work = False
-        sys.exit(0)
+        QtGui.QMessageBox.information(self, "Внимание", "Не завершайте работу приложения аварийно.\n"
+                                                        "Программа завершится в течении нескольких секунд.")
+        self.lst_widgets.clear()
+        mainForm.close()
 
     def load_tracks(self, lst, dir):
         self.btn_save_all.setEnabled(False)
@@ -192,7 +193,8 @@ class UserMusic(QtGui.QWidget):
         self.music.work = True
         val = self.music.load_tracks_from_list(lst, dir, self.lbl_progress)
         if val == -1:
-            QtGui.QMessageBox.warning(self, "Ошибка", "Ошибка при сохранении. Убедитесь в существовании выбраной папки.")
+            QtGui.QMessageBox.warning(self, "Ошибка", "Ошибка при сохранении\n. "
+                                                      "Убедитесь в существовании выбраной папки.")
 
         self.btn_save_all.setEnabled(True)
         self.btn_save.setEnabled(True)
@@ -251,6 +253,32 @@ class SearchMusic(QtGui.QWidget):
         self.layout_form.addLayout(layout_lst)
         self.layout_form.addLayout(layout_btns)
 
+    def load_tracks(self, lst, dir):
+        self.btn_save_all.setEnabled(False)
+        self.btn_save.setEnabled(False)
+
+        self.music.work = True
+        val = self.music.load_tracks_from_list(lst, dir, self.lbl_progress)
+        if val == -1:
+            QtGui.QMessageBox.warning(self, "Ошибка", "Ошибка при сохранении\n. "
+                                                      "Убедитесь в существовании выбраной папки.")
+
+        self.btn_save_all.setEnabled(True)
+        self.btn_save.setEnabled(True)
+
+    def set_music_content(self, all_music):
+        self.lst_widgets.clear()
+        counter = 0
+        for elem in all_music:
+           if len(elem) == 3:
+               custom_item = OneItem(elem[0], elem[1])
+               lst_item = QtGui.QListWidgetItem()
+               self.lst_widgets.addItem(lst_item)
+               self.lst_widgets.setItemWidget(lst_item, custom_item)
+               self.track_dict[counter] = elem[2] # saved url to track
+               counter += 1
+        self.lbl_count.setText("Всего треков: " + str(len(all_music)))
+
     def find_tracks(self, search_word):
         val = self.music.search_by_name(search_word, self.loader.app.access_token)
         if val == -1:
@@ -270,7 +298,7 @@ class SearchMusic(QtGui.QWidget):
             item = self.lst_widgets.item(i)
             wgt = self.lst_widgets.itemWidget(item)
             if wgt.chbox.isChecked():
-                for_loading.append([wgt.name, self.track_dict[i]])
+                for_loading.append([wgt.track, self.track_dict[i]])
 
         if len(for_loading) == 0:
             QtGui.QMessageBox.warning(self, "Ошибка выбора", "Не выбран ни один трек.")
@@ -286,7 +314,7 @@ class SearchMusic(QtGui.QWidget):
         for i in range(self.lst_widgets.count()):
             item = self.lst_widgets.item(i)
             wgt = self.lst_widgets.itemWidget(item)
-            for_loading.append([wgt.name, self.track_dict[i]])
+            for_loading.append([wgt.track, self.track_dict[i]])
 
         dirName = str(QtGui.QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения"))
         if dirName != "":
@@ -298,33 +326,10 @@ class SearchMusic(QtGui.QWidget):
 
     def to_exit_clicked(self):
         self.music.work = False
-        sys.exit(0)
-
-    def load_tracks(self, lst, dir):
-        self.btn_save_all.setEnabled(False)
-        self.btn_save.setEnabled(False)
-
-        self.music.work = True
-        val = self.music.load_tracks_from_list(lst, dir, self.lbl_progress)
-        if val == -1:
-            QtGui.QMessageBox.warning(self, "Ошибка", "Ошибка при сохранении. Убедитесь в существовании выбраной папки.")
-
-        self.btn_save_all.setEnabled(True)
-        self.btn_save.setEnabled(True)
-
-    def set_music_content(self, all_music):
-        if len(all_music) > 0:
-            self.lst_widgets.clear()
-            counter = 0
-            for elem in all_music:
-               if len(elem) == 3:
-                   custom_item = OneItem(elem[0], elem[1])
-                   lst_item = QtGui.QListWidgetItem()
-                   self.lst_widgets.addItem(lst_item)
-                   self.lst_widgets.setItemWidget(lst_item, custom_item)
-                   self.track_dict[counter] = elem[2] # saved url to track
-                   counter += 1
-            self.lbl_count.setText("Всего треков: " + str(len(all_music)))
+        QtGui.QMessageBox.information(self, "Внимание", "Не завершайте работу приложения аварийно.\n"
+                                                        "Программа завершится в течении нескольких секунд.")
+        self.lst_widgets.clear()
+        mainForm.close()
 #######################################################################################################################
 #######################################################################################################################
 class MainForm(QtGui.QWidget):
@@ -351,14 +356,14 @@ class MainForm(QtGui.QWidget):
 
         layout_tab = QtGui.QVBoxLayout(self)
         layout_tab.addWidget(tabs)
-
+#######################################################################################################################
+#######################################################################################################################
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
-    tray = QtGui.QSystemTrayIcon(QtGui.QIcon("icon.png"), app)
-    tray.show()
-
+	
+	
     auth = AuthForm()
     auth.show()
     mainForm = MainForm()
 
-    app.exec()
+    sys.exit(app.exec())

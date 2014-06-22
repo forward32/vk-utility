@@ -47,8 +47,6 @@ class App_data():
             return 0
         else:
             return -1
-
-
 ####################################################################
 class Loader():
     def __init__(self):
@@ -106,7 +104,6 @@ class Loader():
             return -1
 
         return 0
-
 ####################################################################
 class Photo_loader(Loader):
     def __init__(self):
@@ -175,8 +172,6 @@ class Photo_loader(Loader):
         else:
             print ("Nothing to save.")
             return
-
-
 ####################################################################
 class Music_loader(Loader):
     def __init__(self):
@@ -201,33 +196,6 @@ class Music_loader(Loader):
             return 0
         else:
             return -1
-
-
-    """
-    Saves all tracks in links
-    """
-    def load_all_audio(self, dirname):
-        if (len(self.audiolist) >0 ):
-            if (os.path.isdir(dirname)):
-                shutil.rmtree(dirname)
-            os.mkdir(dirname)
-            counter = 0
-            for elem in self.audiolist:
-                counter += 1
-                artist = ""
-                if (len(elem[0])>25): artist = elem[0][:25]+"..."
-                else: artist = elem[0]
-                title = ""
-                if (len(elem[1])>25): title = elem[0][:25]+"..."
-                else: title = elem[1]
-
-                name = dirname+"/"+artist+"-"+title+".mp3"
-                print ("Loading track: " + str(counter) + "...")
-                urllib.request.urlretrieve(elem[2], name)
-            print ("Saving is complete.")
-        else:
-            print ("Nothing to load.")
-            return
 
 
     """
@@ -261,46 +229,45 @@ class Music_loader(Loader):
     """
     def search_by_name(self, name, token):
         self.audiolist = []
-        pamrs = "q="+name+"&auto_complete=1&count="+str(self.max_sound_count)+"&offset="+str(self.offset)
-        json = self.send_request("audio.search", pamrs, token)
-        if ("response" in json.keys()): json = json["response"]
+        parms = "q="+name+"&auto_complete=1&count="+str(self.max_sound_count)+"&offset="+str(self.offset)
+        json = self.send_request("audio.search", parms, token)
+        if "response" in json.keys():
+            json = json["response"]
         else:
-            return
+            return -1
 
         for i in range(1, len(json)):
             self.audiolist.append([json[i]["artist"], json[i]["title"], json[i]["url"], json[i]["duration"]])
+
+        return 0
 
 
     """
     Returns list in format: 1 - track name; 2 - duration; 3 - url
     """
     def get_list_for_gui(self):
-        if len(self.audiolist) > 0:
-            lst = []
-            for elem in self.audiolist:
-                tmp_lst = []
+        lst = []
+        for elem in self.audiolist:
+            tmp_lst = []
 
-                artist = ""
-                if (len(elem[0])>25): artist = elem[0][:25]+"..."
-                else: artist = elem[0]
-                title = ""
-                if (len(elem[1])>25): title = elem[0][:25]+"..."
-                else: title = elem[1]
-                tmp_lst.append(artist+" - " + title)
+            artist = ""
+            if (len(elem[0])>25): artist = elem[0][:25]+"..."
+            else: artist = elem[0]
+            title = ""
+            if (len(elem[1])>25): title = elem[0][:25]+"..."
+            else: title = elem[1]
+            tmp_lst.append(artist+" - " + title)
 
-                dur = float(elem[3]) / 60.0
-                tmp_lst.append("%.2f" % dur) # duration
+            dur = float(elem[3]) / 60.0
+            tmp_lst.append("%.2f" % dur) # duration
 
-                tmp_lst.append(elem[2]) # url
-                lst.append(tmp_lst)
+            tmp_lst.append(elem[2]) # url
+            lst.append(tmp_lst)
 
-            return lst
-        return []
-
+        return lst
 ####################################################################
 if __name__=="__main__":
     try:
         pass
-
     except KeyboardInterrupt:
         print ("Normal exit")
