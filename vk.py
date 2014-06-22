@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import requests
 import os
 import urllib.request
@@ -43,7 +45,13 @@ class App_data():
 
 
     def get_access_token(self, url):
-        self.access_token = url.split("access_token=")[1].split("&")[0]
+        temp_lst = url.split("access_token=")
+        if len(temp_lst) >= 2:
+            self.access_token = temp_lst[1].split("&")[0]
+            return
+        else:
+            print ("Error in authorization.")
+            exit(-1)
 
 
 ####################################################################
@@ -119,27 +127,8 @@ class Photo_loader(Loader):
                     elif ("src" in keys):
                         self.links.append(elem["src"])
             print ("Photos count = " + str(len(self.links)))
-
-
-    """
-    Returns all links to photos available by photos.getAll method
-    """
-    def get_all(self, uid, token):
-        parms = "owner_id="+str(uid)
-        json = self.send_request("photos.getAll", parms, token)["response"]
-        self.links = []
-        if (len(json)>1):
-            for i in range(1,len(json)):
-                keys = json[i].keys()
-                if ("src_xbig" in keys):
-                    self.links.append(json[i]["src_xbig"])
-                elif ("src_big" in keys):
-                    self.links.append(json[i]["src_big"])
-                elif ("src" in keys):
-                    self.links.append(json[i]["src"])
-        print ("Photos count = " + str(len(self.links)))
-
-
+			
+			
     """
     Saves all photos in links
     """
@@ -150,7 +139,7 @@ class Photo_loader(Loader):
             os.mkdir(dirname)
             counter = 1
             for url in self.links:
-                name = dirname+"/photo_"+str(counter)
+                name = dirname+"/photo_"+str(counter)+".jpeg"
                 print ("Loading " + name + "...")
                 urllib.request.urlretrieve(url, name)
                 counter += 1
@@ -194,7 +183,9 @@ class Music_loader(Loader):
             if (os.path.isdir(dirname)):
                 shutil.rmtree(dirname)
             os.mkdir(dirname)
+            counter = 0
             for elem in self.audiolist:
+                counter += 1
                 artist = ""
                 if (len(elem[0])>40): artist = elem[0][:40]+"..."
                 else: artist = elem[0]
@@ -202,8 +193,8 @@ class Music_loader(Loader):
                 if (len(elem[1])>40): title = elem[0][:40]+"..."
                 else: title = elem[1]
 
-                name = dirname+"/"+artist+"-"+title
-                print ("Loading " + name + "...")
+                name = dirname+"/"+artist+"-"+title+".mp3"
+                print ("Loading track: " + str(counter) + "...")
                 urllib.request.urlretrieve(elem[2], name)
             print ("Saving is complete.")
         else:
@@ -226,9 +217,6 @@ class Music_loader(Loader):
             self.audiolist.append([json[i]["artist"], json[i]["title"], json[i]["url"], json[i]["duration"]])
 
         print ("Tracks count = " + str(len(self.audiolist)))
-        for i in range(len(self.audiolist)):
-            print (self.audiolist[i][0]+" - " + self.audiolist[i][1] + " : " + str(self.audiolist[i][3]) + str("sec"))
-
 
 
 ####################################################################
@@ -243,7 +231,8 @@ if __name__=="__main__":
         s.post(req)
         r = s.get(app.request)
         url = ""
-        content = r.content.decode("windows-1251")
+        content = r.content.decode("cp866")
+        #print (content)
         if not app.already_in_use(content):
             link = app.parse_content(content)
             r = s.get(link)
@@ -253,19 +242,15 @@ if __name__=="__main__":
         app.get_access_token(url)
         # end auth part #####
 
-        #loader = Loader()
-        #app.uid = loader.get_uid("", app.access_token)
+        loader = Loader()
+        app.uid = loader.get_uid("", app.access_token)
         #photo = Photo_loader()
-        #photo.get_all(app.uid, app.access_token)
-        #photo.save_all("get_all_method_photos")
         #photo.get_all_from_albums(app.uid, app.access_token)
         #photo.save_all("photos")
 
-        #music = Music_loader()
-        #music.get(app.uid, app.access_token)
-        #music.load_all_audio("music")
+        music = Music_loader()
+        music.get(app.uid, app.access_token)
+        music.load_all_audio("music")
         #music.search_by_name("Nirvana", app.access_token)
     except KeyboardInterrupt:
         print ("Normal exit")
-    except Exception as e:
-        print (str(repr(e)))
