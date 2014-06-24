@@ -4,6 +4,17 @@ import sys
 import vk
 from PyQt4 import QtCore, QtGui
 import threading
+from time import sleep
+#######################################################################################################################
+#######################################################################################################################
+WORK = True # flag for thread authorization
+STATUS = -1 # authorization status
+def static_auth_thread(loader, user, pass_, id):
+    global WORK
+    global STATUS
+    WORK = True
+    STATUS = loader.autorize(user, pass_, id)
+    WORK = False
 #######################################################################################################################
 #######################################################################################################################
 class AuthForm(QtGui.QWidget):
@@ -27,8 +38,9 @@ class AuthForm(QtGui.QWidget):
         edt_pass.setEchoMode(QtGui.QLineEdit.Password)
         btn_ok = QtGui.QPushButton("Принять")
         btn_cancel = QtGui.QPushButton("Отменить")
+        self.lbl_progress = QtGui.QLabel()
 
-        grid = QtGui.QGridLayout(self)
+        grid = QtGui.QGridLayout()
         grid.addWidget(lbl_login, 0, 0)
         grid.addWidget(edt_login, 0, 1)
         grid.addWidget(lbl_pass, 1, 0)
@@ -38,20 +50,33 @@ class AuthForm(QtGui.QWidget):
         grid.addWidget(btn_ok, 3, 0)
         grid.addWidget(btn_cancel, 3, 1)
 
+        layout_progress = QtGui.QVBoxLayout(self)
+        layout_progress.addLayout(grid)
+        layout_progress.addWidget(self.lbl_progress)
+
         btn_ok.clicked.connect(lambda:self.to_ok_clicked(edt_login.text(), edt_pass.text(), edt_id.text()))
         btn_cancel.clicked.connect(self.to_cancel_clicked)
 
     def to_ok_clicked(self, user_name, pass_name, id_name):
         if user_name != "" and pass_name != "" and id_name != "":
             loader = vk.Loader()
-            val = loader.autorize(user_name, pass_name, id_name)
-            if val == -1:
+            #val = loader.autorize(user_name, pass_name, id_name)
+            thr = threading.Thread(target=static_auth_thread, args=(loader, user_name, pass_name, id_name))
+            thr.start()
+            # wait while authorize
+            while WORK==True:
+                for i in range(5):
+                    QtGui.QApplication.processEvents()
+                    self.lbl_progress.setText("Авторизуюсь" + '.'*i)
+                    sleep(0.4)
+					
+            if STATUS == -1:
                 QtGui.QMessageBox.warning(self, "Ошибка авторизации", ("Неверный ввод данных.\n"
                                                  "Проверьте правильность ввода данных и повторите попытку."))
+                self.lbl_progress.setText("")
                 return
-			
-            auth.hide()
-			
+				
+            auth.close()
             mainForm.musicForm.loader = loader
             mainForm.searchForm.loader = loader			
             mainForm.musicForm.set_music_content()

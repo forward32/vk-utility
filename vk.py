@@ -212,7 +212,8 @@ class Music_loader(Loader):
             for elem in lst:
                 if self.work:
                     lbl.setText("Скачиваю трек " + str(cnt) + " из " + str(size) + "...")
-                    urllib.request.urlretrieve(str(elem[1]), elem[0]+".mp3")
+                    fileName = self.check_filename(elem[0])
+                    urllib.request.urlretrieve(str(elem[1]), fileName+".mp3")
                     cnt += 1
                 else:
                     break
@@ -222,6 +223,20 @@ class Music_loader(Loader):
             return 0
 
         return -1
+
+
+    """
+    In windows filename can not contain the following characters.
+    This function checks fileName and and removes bad symbols.
+    """
+    def check_filename(self, name):
+        bad_symbols = {'\\','/',':','?','*','|','<', '>', '\"', '\''}
+        good_name = ""
+        for i in name:
+            if not i in bad_symbols:
+                good_name += i
+
+        return good_name
 
 
     """
