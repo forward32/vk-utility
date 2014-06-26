@@ -166,6 +166,7 @@ class UserMusic(QtGui.QWidget):
             if len(elem) == 3:
                 custom_item = OneItem(elem[0], elem[1])
                 lst_item = QtGui.QListWidgetItem()
+                lst_item.setSizeHint(QtCore.QSize(lst_item.sizeHint().width(), 25))
                 self.lst_widgets.addItem(lst_item)
                 self.lst_widgets.setItemWidget(lst_item, custom_item)
                 self.track_dict[counter] = elem[2] # saved url to track
@@ -231,6 +232,7 @@ class SearchMusic(QtGui.QWidget):
         self.track_dict = {}
         self.music = vk.Music_loader()
         self.loader = vk.Loader()
+        self.old_search_word = ""
         self.setGeometry(600,300,600,500)
         self.lbl_progress = QtGui.QLabel("")
 
@@ -242,7 +244,7 @@ class SearchMusic(QtGui.QWidget):
 
         lbl_search = QtGui.QLabel("Поиск треков: ")
         edt_search = QtGui.QLineEdit()
-        btn_search = QtGui.QPushButton("Найти")
+        btn_search = QtGui.QPushButton("Найти (найти еще)")
         btn_search.clicked.connect(lambda :self.find_tracks(edt_search.text()))
         layout_search = QtGui.QHBoxLayout()
         layout_search.addWidget(lbl_search)
@@ -250,11 +252,8 @@ class SearchMusic(QtGui.QWidget):
         layout_search.addWidget(btn_search)
 
         self.lbl_count = QtGui.QLabel("Найдено треков: 0")
-        btn_update = QtGui.QPushButton("Найти еще")
-        btn_update.clicked.connect(lambda:self.to_find_more_click(edt_search.text()))
         layout_lbl = QtGui.QHBoxLayout()
         layout_lbl.addWidget(self.lbl_count)
-        layout_lbl.addWidget(btn_update)
         layout_lbl.addWidget(self.lbl_progress)
 
         btn_exit = QtGui.QPushButton("Выйти")
@@ -298,6 +297,7 @@ class SearchMusic(QtGui.QWidget):
            if len(elem) == 3:
                custom_item = OneItem(elem[0], elem[1])
                lst_item = QtGui.QListWidgetItem()
+               lst_item.setSizeHint(QtCore.QSize(lst_item.sizeHint().width(), 25))
                self.lst_widgets.addItem(lst_item)
                self.lst_widgets.setItemWidget(lst_item, custom_item)
                self.track_dict[counter] = elem[2] # saved url to track
@@ -305,17 +305,18 @@ class SearchMusic(QtGui.QWidget):
         self.lbl_count.setText("Всего треков: " + str(len(all_music)))
 
     def find_tracks(self, search_word):
+        if search_word != self.old_search_word:
+            self.music.offset = 0
+            self.old_search_word = search_word
+        else:
+            self.music.offset += self.music.max_sound_count
+            
         val = self.music.search_by_name(search_word, self.loader.app.access_token)
         if val == -1:
             return
 
         lst = self.music.get_list_for_gui()
         self.set_music_content(lst)
-
-    def to_find_more_click(self, search_word):
-        if search_word != "":
-            self.music.offset += self.music.max_sound_count
-            self.find_tracks(search_word)
 
     def to_save_clicked(self):
         for_loading = []
