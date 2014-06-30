@@ -5,6 +5,7 @@ import vk
 from PyQt4 import QtCore, QtGui
 import threading
 from time import sleep
+import socket
 #######################################################################################################################
 #######################################################################################################################
 WORK = True # flag for thread authorization
@@ -57,7 +58,18 @@ class AuthForm(QtGui.QWidget):
         btn_ok.clicked.connect(lambda:self.to_ok_clicked(edt_login.text(), edt_pass.text(), edt_id.text()))
         btn_cancel.clicked.connect(self.to_cancel_clicked)
 
+    def check_connection(self):
+        try:
+            socket.gethostbyaddr('www.yandex.ru')
+        except socket.gaierror:
+            return False
+        return True
+
     def to_ok_clicked(self, user_name, pass_name, id_name):
+        if not self.check_connection():
+            QtGui.QMessageBox.warning(self, "Предупреждение", "Отсутствует соединение с интернетом.")
+            return
+        
         if user_name != "" and pass_name != "" and id_name != "":
             loader = vk.Loader()
             #val = loader.autorize(user_name, pass_name, id_name)
