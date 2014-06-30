@@ -165,6 +165,7 @@ class UserMusic(QtGui.QWidget):
     def update_page_content(self, id_name):
         if id_name == self.loader.id:
             return
+        self.loader.id = id_name
         self.loader.app.uid = self.loader.get_uid(id_name, self.loader.app.access_token)
         if self.loader.app.uid == -1:
             QtGui.QMessageBox.warning(self, "Ошибка доступа", "Не могу получить данные с указанной страницы.")
