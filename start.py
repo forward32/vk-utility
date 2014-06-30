@@ -78,7 +78,8 @@ class AuthForm(QtGui.QWidget):
 				
             auth.close()
             mainForm.musicForm.loader = loader
-            mainForm.searchForm.loader = loader			
+            mainForm.searchForm.loader = loader
+            mainForm.musicForm.edt_page.setText(id_name)
             mainForm.musicForm.set_music_content()
             mainForm.show()
         else:
@@ -140,6 +141,15 @@ class UserMusic(QtGui.QWidget):
         btn_cancel = QtGui.QPushButton("Отменить загрузку")
         btn_cancel.clicked.connect(self.to_cancel_clicked)
 
+        lbl_page = QtGui.QLabel("Текущая страница:")
+        self.edt_page = QtGui.QLineEdit()
+        self.btn_page = QtGui.QPushButton("Обновить контент")
+        self.btn_page.clicked.connect(lambda:self.update_page_content(self.edt_page.text()))
+        layout_page = QtGui.QHBoxLayout()
+        layout_page.addWidget(lbl_page)
+        layout_page.addWidget(self.edt_page)
+        layout_page.addWidget(self.btn_page)
+
         layout_btns = QtGui.QHBoxLayout()
         layout_btns.addWidget(self.btn_save)
         layout_btns.addWidget(self.btn_save_all)
@@ -149,8 +159,18 @@ class UserMusic(QtGui.QWidget):
         self.layout_form = QtGui.QVBoxLayout(self)
         self.layout_form.addLayout(layout_lbl,)
         self.layout_form.addLayout(layout_lst)
+        self.layout_form.addLayout(layout_page)
         self.layout_form.addLayout(layout_btns)
 
+    def update_page_content(self, id_name):
+        if id_name == self.loader.id:
+            return
+        self.loader.app.uid = self.loader.get_uid(id_name, self.loader.app.access_token)
+        if self.loader.app.uid == -1:
+            QtGui.QMessageBox.warning(self, "Ошибка доступа", "Не могу получить данные с указанной страницы.")
+            return
+        self.set_music_content()
+            
 
     # all_music: 1 - track name; 2 - duration (min:sec); 3 - url
     def set_music_content(self):
@@ -386,7 +406,6 @@ class MainForm(QtGui.QWidget):
 #######################################################################################################################
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
-	
 	
     auth = AuthForm()
     auth.show()
