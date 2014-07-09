@@ -175,13 +175,15 @@ class UserMusic(QtGui.QWidget):
         self.layout_form.addLayout(layout_btns)
 
     def update_page_content(self, id_name):
-        if id_name == self.loader.id:
-            return
-        self.loader.id = id_name
         self.loader.app.uid = self.loader.get_uid(id_name, self.loader.app.access_token)
         if self.loader.app.uid == -1:
             QtGui.QMessageBox.warning(self, "Ошибка доступа", "Не могу получить данные с указанной страницы.")
             return
+        self.loader.id = id_name
+        self.lbl_progress.setText("Идет обновление. Пожалуйста, подождите...")
+        self.btn_save.setEnabled(False)
+        self.btn_save_all.setEnabled(False)
+        QtGui.QApplication.processEvents()
         self.set_music_content()
             
 
@@ -205,6 +207,9 @@ class UserMusic(QtGui.QWidget):
                 self.track_dict[counter] = elem[2] # saved url to track
                 counter += 1
         self.lbl_count.setText("Всего треков: " + str(len(all_music)))
+        self.lbl_progress.setText("")
+        self.btn_save.setEnabled(True)
+        self.btn_save_all.setEnabled(True)
 
     def to_save_clicked(self):
         for_loading = []

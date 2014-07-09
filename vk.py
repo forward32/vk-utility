@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from macpath import dirname
 
 import requests
 import os
