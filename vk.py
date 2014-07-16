@@ -43,9 +43,12 @@ class App_data():
         temp_lst = url.split("access_token=")
         if len(temp_lst) >= 2:
             self.access_token = temp_lst[1].split("&")[0]
-            return 0
-        else:
-            return -1
+            temp_lst = url.split("user_id=")
+            if len(temp_lst) >= 2:
+                self.uid = temp_lst[1]
+                return 0
+
+        return -1
 ####################################################################
 class Loader():
     def __init__(self):
@@ -77,9 +80,7 @@ class Loader():
     """
     Process of authorization
     """
-    def autorize(self, user, password, id):
-        self.id = id
-
+    def autorize(self, user, password):
         # auth part #####
         s = requests.session()
         req = "https://login.vk.com/?act=login&email="+user+"&pass="+password
@@ -98,9 +99,7 @@ class Loader():
         if val == -1:
             return -1
 
-        self.app.uid = self.get_uid(self.id, self.app.access_token)
-        if self.app.uid == -1:
-            return -1
+        self.id = self.app.uid
 
         return 0
 ####################################################################

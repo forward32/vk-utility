@@ -10,11 +10,11 @@ import socket
 #######################################################################################################################
 WORK = True # flag for thread authorization
 STATUS = -1 # authorization status
-def static_auth_thread(loader, user, pass_, id):
+def static_auth_thread(loader, user, pass_):
     global WORK
     global STATUS
     WORK = True
-    STATUS = loader.autorize(user, pass_, id)
+    STATUS = loader.autorize(user, pass_)
     WORK = False
 #######################################################################################################################
 #######################################################################################################################
@@ -32,10 +32,8 @@ class AuthForm(QtGui.QWidget):
 
         lbl_login = QtGui.QLabel("Логин:")
         lbl_pass = QtGui.QLabel("Пароль:")
-        lbl_id = QtGui.QLabel("ID страницы:")
         edt_login = QtGui.QLineEdit()
         edt_pass = QtGui.QLineEdit()
-        edt_id = QtGui.QLineEdit()
         edt_pass.setEchoMode(QtGui.QLineEdit.Password)
         btn_ok = QtGui.QPushButton("Принять")
         btn_cancel = QtGui.QPushButton("Отменить")
@@ -46,16 +44,14 @@ class AuthForm(QtGui.QWidget):
         grid.addWidget(edt_login, 0, 1)
         grid.addWidget(lbl_pass, 1, 0)
         grid.addWidget(edt_pass, 1, 1)
-        grid.addWidget(lbl_id, 2, 0)
-        grid.addWidget(edt_id, 2, 1)
-        grid.addWidget(btn_ok, 3, 0)
-        grid.addWidget(btn_cancel, 3, 1)
+        grid.addWidget(btn_ok, 2, 0)
+        grid.addWidget(btn_cancel, 2, 1)
 
         layout_progress = QtGui.QVBoxLayout(self)
         layout_progress.addLayout(grid)
         layout_progress.addWidget(self.lbl_progress)
 
-        btn_ok.clicked.connect(lambda:self.to_ok_clicked(edt_login.text(), edt_pass.text(), edt_id.text()))
+        btn_ok.clicked.connect(lambda:self.to_ok_clicked(edt_login.text(), edt_pass.text()))
         btn_cancel.clicked.connect(self.to_cancel_clicked)
 
     def check_connection(self):
@@ -65,15 +61,14 @@ class AuthForm(QtGui.QWidget):
             return False
         return True
 
-    def to_ok_clicked(self, user_name, pass_name, id_name):
+    def to_ok_clicked(self, user_name, pass_name):
         if not self.check_connection():
             QtGui.QMessageBox.warning(self, "Предупреждение", "Отсутствует соединение с интернетом.")
             return
         
-        if user_name != "" and pass_name != "" and id_name != "":
+        if user_name != "" and pass_name != "":
             loader = vk.Loader()
-            #val = loader.autorize(user_name, pass_name, id_name)
-            thr = threading.Thread(target=static_auth_thread, args=(loader, user_name, pass_name, id_name))
+            thr = threading.Thread(target=static_auth_thread, args=(loader, user_name, pass_name))
             thr.start()
             # wait while authorize
             while WORK==True:
@@ -91,7 +86,7 @@ class AuthForm(QtGui.QWidget):
             auth.close()
             mainForm.musicForm.loader = loader
             mainForm.searchForm.loader = loader
-            mainForm.musicForm.edt_page.setText(id_name)
+            mainForm.musicForm.edt_page.setText(loader.id)
             mainForm.musicForm.set_music_content()
             mainForm.show()
         else:
