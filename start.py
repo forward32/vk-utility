@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from itertools import count
 
 import sys
 import vk
@@ -7,10 +8,13 @@ import threading
 from time import sleep
 import socket
 import webbrowser
+import os
+import shutil
 #######################################################################################################################
 #######################################################################################################################
 WORK = True # flag for thread authorization
 STATUS = -1 # authorization status
+PREVIEW_FOLDER = ".preview"
 def static_auth_thread(loader, user, pass_):
     global WORK
     global STATUS
@@ -87,7 +91,9 @@ class AuthForm(QtGui.QWidget):
             auth.close()
             mainForm.musicForm.loader = loader
             mainForm.searchForm.loader = loader
+            mainForm.imageForm.loader = loader
             mainForm.musicForm.edt_page.setText(loader.id)
+            mainForm.imageForm.edt_page.setText(loader.id)
             mainForm.musicForm.set_music_content()
             mainForm.show()
         else:
@@ -103,14 +109,8 @@ class OneItem(QtGui.QWidget):
         self.track = track_name
         self.url = url
 
-        lbl_icon = QtGui.QLabel(self)
-        lbl_icon.setGeometry(0,0,30,30)
-        pix = QtGui.QPixmap("track.png")
-        scalled_pix = pix.scaled(lbl_icon.width(), lbl_icon.height(), QtCore.Qt.KeepAspectRatio)
-        lbl_icon.setPixmap(scalled_pix)
-
         self.btn_play = QtGui.QPushButton(self)
-        self.btn_play.setGeometry(40,0,40,30)
+        self.btn_play.setGeometry(0,0,50,30)
         pix = QtGui.QPixmap("play.png")
         scalled_pix = pix.scaled(self.btn_play.width(), self.btn_play.height(), QtCore.Qt.KeepAspectRatio)
         icon = QtGui.QIcon(pix)
@@ -119,16 +119,47 @@ class OneItem(QtGui.QWidget):
 
         lbl_name = QtGui.QLabel(self)
         lbl_name.setText(self.track)
-        lbl_name.setGeometry(100,0,350,30)
+        lbl_name.setGeometry(80,0,350,30)
 
         lbl_duration = QtGui.QLabel(self)
         lbl_duration.setText(duration)
-        lbl_duration.setGeometry(460,0,40,30)
+        lbl_duration.setGeometry(450,0,40,30)
 
         self.chbox = QtGui.QCheckBox(self)
         self.chbox.setGeometry(510,0,40,30)
 
     def play_track_in_browser(self):
+        if self.url != "":
+            webbrowser.open(self.url)
+#######################################################################################################################
+#######################################################################################################################
+class OnePictureItem(QtGui.QWidget):
+    def __init__(self, img_url, img_path):
+        QtGui.QWidget.__init__(self)
+        self.url = img_url
+
+        lbl_preview = QtGui.QLabel(self)
+        lbl_preview.setGeometry(0,0,100,100)
+        pix = QtGui.QPixmap(img_path)
+        scalled_pix = pix.scaled(lbl_preview.width(), lbl_preview.height())
+        lbl_preview.setPixmap(scalled_pix)
+
+        lbl_line = QtGui.QLabel(self)
+        lbl_line.setText("-----------------------------------------------------------------------")
+        lbl_line.setGeometry(100,40,300,20)
+
+        self.btn_show = QtGui.QPushButton(self)
+        self.btn_show.setGeometry(400,30,60,40)
+        pix = QtGui.QPixmap("show.png")
+        scalled_pix = pix.scaled(self.btn_show.width(), self.btn_show.height(), QtCore.Qt.KeepAspectRatio)
+        icon = QtGui.QIcon(pix)
+        self.btn_show.setIcon(icon)
+        self.btn_show.clicked.connect(self.show_img_in_browser)
+
+        self.chbox = QtGui.QCheckBox(self)
+        self.chbox.setGeometry(470,30,40,40)
+
+    def show_img_in_browser(self):
         if self.url != "":
             webbrowser.open(self.url)
 #######################################################################################################################
@@ -405,6 +436,156 @@ class SearchMusic(QtGui.QWidget):
         mainForm.close()
 #######################################################################################################################
 #######################################################################################################################
+class UserImages(QtGui.QWidget):
+    def __init__(self):
+        QtGui.QWidget.__init__(self)
+        self.dict = {}
+        self.photo = vk.Photo_loader()
+        self.loader = vk.Loader()
+        self.setGeometry(600,300,600,500)
+        self.lbl_progress = QtGui.QLabel("")
+
+        self.lst_widgets = QtGui.QListWidget()
+        self.lst_widgets.setGeometry(50,50,500,400)
+
+        layout_lst = QtGui.QHBoxLayout()
+        layout_lst.addWidget(self.lst_widgets)
+
+        self.lbl_count = QtGui.QLabel("Всего фоток: 0")
+        layout_lbl = QtGui.QHBoxLayout()
+        layout_lbl.addWidget(self.lbl_count)
+        layout_lbl.addWidget(self.lbl_progress)
+
+        btn_exit = QtGui.QPushButton("Выйти")
+        btn_exit.clicked.connect(self.to_exit_clicked)
+        self.btn_save = QtGui.QPushButton("Скачать выделенные")
+        self.btn_save.clicked.connect(self.to_save_clicked)
+        self.btn_save_all = QtGui.QPushButton("Скачать все")
+        self.btn_save_all.clicked.connect(self.to_save_all_clicked)
+        btn_cancel = QtGui.QPushButton("Отменить загрузку")
+        btn_cancel.clicked.connect(self.to_cancel_clicked)
+
+        lbl_page = QtGui.QLabel("Текущая страница:")
+        self.edt_page = QtGui.QLineEdit()
+        self.btn_page = QtGui.QPushButton("Обновить контент")
+        self.btn_page.clicked.connect(lambda:self.update_page_content(self.edt_page.text()))
+        layout_page = QtGui.QHBoxLayout()
+        layout_page.addWidget(lbl_page)
+        layout_page.addWidget(self.edt_page)
+        layout_page.addWidget(self.btn_page)
+
+        layout_btns = QtGui.QHBoxLayout()
+        layout_btns.addWidget(self.btn_save)
+        layout_btns.addWidget(self.btn_save_all)
+        layout_btns.addWidget(btn_cancel)
+        layout_btns.addWidget(btn_exit)
+
+        self.layout_form = QtGui.QVBoxLayout(self)
+        self.layout_form.addLayout(layout_lbl,)
+        self.layout_form.addLayout(layout_lst)
+        self.layout_form.addLayout(layout_page)
+        self.layout_form.addLayout(layout_btns)
+
+    def update_page_content(self, id_name):
+        self.loader.app.uid = self.loader.get_uid(id_name, self.loader.app.access_token)
+        if self.loader.app.uid == -1:
+            QtGui.QMessageBox.warning(self, "Ошибка доступа", "Не могу получить данные с указанной страницы.")
+            return
+        self.loader.id = id_name
+        self.lbl_progress.setText("Идет обновление. Пожалуйста, подождите...")
+        self.btn_save.setEnabled(False)
+        self.btn_save_all.setEnabled(False)
+        QtGui.QApplication.processEvents()
+        self.set_image_content()
+
+    def set_image_content(self):
+        #cleaning old data
+        self.lst_widgets.clear()
+        self.dict = []
+
+        # getting links to images in different resolutions
+        val = self.photo.get_all_from_albums(self.loader.app.uid, self.loader.app.access_token, "")
+        if val == -1:
+            return -1
+        else: img_dict_norm = val # links to preview
+        val = self.photo.get_all_from_albums(self.loader.app.uid, self.loader.app.access_token, "BIG")
+        if val == -1:
+            return -1
+        else: img_dict_big = val # links for saving (in high resolution)
+
+        # saving images for preview
+        self.photo.save_all(PREVIEW_FOLDER, img_dict_norm)
+
+        counter = 0
+        for elem in img_dict_big:
+            path_to_preview = PREVIEW_FOLDER + "/photo_"+str(counter+1)+".jpeg"
+            custom_item = OnePictureItem(elem, path_to_preview)
+            lst_item = QtGui.QListWidgetItem()
+            lst_item.setSizeHint(QtCore.QSize(lst_item.sizeHint().width(), 110))
+            self.lst_widgets.addItem(lst_item)
+            self.lst_widgets.setItemWidget(lst_item, custom_item)
+            self.dict.append(elem) # saved url to image
+            counter += 1
+        self.lbl_count.setText("Всего фоток: " + str(len(img_dict_big)))
+        self.lbl_progress.setText("")
+        self.btn_save.setEnabled(True)
+        self.btn_save_all.setEnabled(True)
+
+    def to_save_clicked(self):
+        for_loading = []
+        for i in range(self.lst_widgets.count()):
+            item = self.lst_widgets.item(i)
+            wgt = self.lst_widgets.itemWidget(item)
+            if wgt.chbox.isChecked():
+                for_loading.append(["photo_"+str(i+1), self.dict[i]])
+
+        if len(for_loading) == 0:
+            QtGui.QMessageBox.warning(self, "Ошибка выбора", "Не выбрана ни одна фотка.")
+            return
+
+        dirName = str(QtGui.QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения"))
+        if dirName != "":
+            thr = threading.Thread(target=self.load_images, args=(for_loading, dirName))
+            thr.start()
+
+    def to_save_all_clicked(self):
+        for_loading = []
+        for i in range(self.lst_widgets.count()):
+            item = self.lst_widgets.item(i)
+            wgt = self.lst_widgets.itemWidget(item)
+            for_loading.append(["photo_"+str(i+1), self.dict[i]])
+
+        dirName = str(QtGui.QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения"))
+        if dirName != "":
+            thr = threading.Thread(target=self.load_images, args=(for_loading, dirName))
+            thr.start()
+
+    def to_cancel_clicked(self):
+        self.photo.work = False
+
+    def to_exit_clicked(self):
+        self.photo.work = False
+        QtGui.QMessageBox.information(self, "Внимание", "Не завершайте работу приложения аварийно.\n"
+                                                        "Программа завершится в течении нескольких секунд.")
+        self.lst_widgets.clear()
+        if (os.path.isdir(PREVIEW_FOLDER)):
+                shutil.rmtree(PREVIEW_FOLDER)
+        mainForm.close()
+
+    def load_images(self, lst, dir):
+        self.btn_save_all.setEnabled(False)
+        self.btn_save.setEnabled(False)
+
+        self.photo.work = True
+        val = self.photo.load_images_from_list(lst, dir, self.lbl_progress)
+        if val == -1:
+            QtGui.QMessageBox.warning(self, "Ошибка", "Ошибка при сохранении\n. "
+                                                      "Убедитесь в существовании выбраной папки.")
+
+        self.btn_save_all.setEnabled(True)
+        self.btn_save.setEnabled(True)
+#######################################################################################################################
+#######################################################################################################################
 class MainForm(QtGui.QWidget):
     def __init__(self):
         QtGui.QWidget.__init__(self)
@@ -422,13 +603,20 @@ class MainForm(QtGui.QWidget):
         tabs.setGeometry(0,0,650,500)
 
         self.musicForm = UserMusic()
-        tabs.addTab(self.musicForm, "Музыка со страницы")
+        tabs.addTab(self.musicForm, "Музыка")
 
         self.searchForm = SearchMusic()
         tabs.addTab(self.searchForm, "Поиск музыки")
 
+        self.imageForm = UserImages()
+        tabs.addTab(self.imageForm, "Фото")
+
         layout_tab = QtGui.QVBoxLayout(self)
         layout_tab.addWidget(tabs)
+
+    #def __del__(self):
+    #      if (os.path.isdir(PREVIEW_FOLDER)):
+    #            shutil.rmtree(PRwe EVIEW_FOLDER)
 #######################################################################################################################
 #######################################################################################################################
 if __name__ == "__main__":

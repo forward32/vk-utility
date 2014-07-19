@@ -107,17 +107,17 @@ class Photo_loader(Loader):
     def __init__(self):
         self.links = []
         self.aids = []
+        self.work = False
 
 
     """
     Saves links in all available albums of user
     """
-    def get_all_from_albums(self, uid, token):
+    def get_all_from_albums(self, uid, token, quality):
         parms = "uid="+str(uid)
         self.aids = []
         self.aids.append("profile")
         self.aids.append("wall")
-        self.aids.append("saved")
 
         json = self.send_request("photos.getAlbums", parms, token)["response"]
 
@@ -126,14 +126,18 @@ class Photo_loader(Loader):
             if ("aid" in keys):
                 self.aids.append(elem["aid"])
 
-        print ("Albums count = " + str(len(self.aids)))
-        self.get(uid, token)
+        if quality == "BIG": self.getBig(uid, token)
+        else: self.getNormal(uid, token)
+
+        if len(self.links) > 0:
+            return self.links
+        return -1
 
 
     """
-    Saves links in all albums by aid
+    Saves links in all albums by aid in best quality
     """
-    def get(self, uid, token):
+    def getBig(self, uid, token):
         if (len(self.aids)>0):
             self.links = []
             for elem in self.aids:
@@ -149,26 +153,66 @@ class Photo_loader(Loader):
                         self.links.append(elem["src_big"])
                     elif ("src" in keys):
                         self.links.append(elem["src"])
-            print ("Photos count = " + str(len(self.links)))
-			
-			
+
+    """
+    Saves links in all albums by aid in usual quality
+    """
+    def getNormal(self, uid, token):
+        if (len(self.aids)>0):
+            self.links = []
+            for elem in self.aids:
+                parms = "uid="+str(uid)+"&aid="+str(elem)
+                json= self.send_request("photos.get", parms, token)
+                if ("response" in json.keys()): json = json["response"]
+                else: continue
+                for elem in json:
+                    keys = elem.keys()
+                    if ("src" in keys):
+                        self.links.append(elem["src"])
+                    elif ("src_big" in keys):
+                        self.links.append(elem["src_big"])
+                    elif ("src_xbig" in keys):
+                        self.links.append(elem["src_xbig"])
+
+    """
+    Loads all images from lst;
+    lst-structure: one element is list with format: 1 - image name; 2 - url
+    """
+    def load_images_from_list(self, lst, dirName, lbl):
+        if os.path.exists(dirName):
+            old = os.getcwd()
+            os.chdir(dirName)
+
+            cnt = 1
+            size = len(lst)
+            for elem in lst:
+                if self.work:
+                    lbl.setText("Скачиваю фотку " + str(cnt) + " из " + str(size) + "...")
+                    urllib.request.urlretrieve(str(elem[1]), elem[0]+".jpeg")
+                    cnt += 1
+                else:
+                    break
+
+            lbl.setText("")
+            os.chdir(old)
+            return 0
+
+        return -1
+
     """
     Saves all photos in links
     """
-    def save_all(self, dirname):
-        if (len(self.links)>0):
+    def save_all(self, dirname, links):
+        if (len(links)>0):
             if (os.path.isdir(dirname)):
                 shutil.rmtree(dirname)
             os.mkdir(dirname)
             counter = 1
-            for url in self.links:
+            for url in links:
                 name = dirname+"/photo_"+str(counter)+".jpeg"
-                print ("Loading " + name + "...")
                 urllib.request.urlretrieve(url, name)
                 counter += 1
-            print ("Saving is complete.")
         else:
-            print ("Nothing to save.")
             return
 ####################################################################
 class Music_loader(Loader):
