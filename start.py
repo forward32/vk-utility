@@ -6,6 +6,7 @@ from PyQt4 import QtCore, QtGui
 import threading
 from time import sleep
 import socket
+import webbrowser
 #######################################################################################################################
 #######################################################################################################################
 WORK = True # flag for thread authorization
@@ -97,26 +98,39 @@ class AuthForm(QtGui.QWidget):
 #######################################################################################################################
 #######################################################################################################################
 class OneItem(QtGui.QWidget):
-    def __init__(self, track_name, duration):
+    def __init__(self, track_name, duration, url):
         QtGui.QWidget.__init__(self)
         self.track = track_name
+        self.url = url
 
         lbl_icon = QtGui.QLabel(self)
-        lbl_icon.setGeometry(0,0,30,20)
+        lbl_icon.setGeometry(0,0,30,30)
         pix = QtGui.QPixmap("track.png")
         scalled_pix = pix.scaled(lbl_icon.width(), lbl_icon.height(), QtCore.Qt.KeepAspectRatio)
         lbl_icon.setPixmap(scalled_pix)
 
+        self.btn_play = QtGui.QPushButton(self)
+        self.btn_play.setGeometry(40,0,40,30)
+        pix = QtGui.QPixmap("play.png")
+        scalled_pix = pix.scaled(self.btn_play.width(), self.btn_play.height(), QtCore.Qt.KeepAspectRatio)
+        icon = QtGui.QIcon(pix)
+        self.btn_play.setIcon(icon)
+        self.btn_play.clicked.connect(self.play_track_in_browser)
+
         lbl_name = QtGui.QLabel(self)
         lbl_name.setText(self.track)
-        lbl_name.setGeometry(50,0,350,20)
+        lbl_name.setGeometry(100,0,350,30)
 
         lbl_duration = QtGui.QLabel(self)
         lbl_duration.setText(duration)
-        lbl_duration.setGeometry(420,0,30,20)
+        lbl_duration.setGeometry(460,0,40,30)
 
         self.chbox = QtGui.QCheckBox(self)
-        self.chbox.setGeometry(460,0,40,20)
+        self.chbox.setGeometry(510,0,40,30)
+
+    def play_track_in_browser(self):
+        if self.url != "":
+            webbrowser.open(self.url)
 #######################################################################################################################
 #######################################################################################################################
 class UserMusic(QtGui.QWidget):
@@ -194,9 +208,9 @@ class UserMusic(QtGui.QWidget):
         counter = 0
         for elem in all_music:
             if len(elem) == 3:
-                custom_item = OneItem(elem[0], elem[1])
+                custom_item = OneItem(elem[0], elem[1], elem[2])
                 lst_item = QtGui.QListWidgetItem()
-                lst_item.setSizeHint(QtCore.QSize(lst_item.sizeHint().width(), 25))
+                lst_item.setSizeHint(QtCore.QSize(lst_item.sizeHint().width(), 30))
                 self.lst_widgets.addItem(lst_item)
                 self.lst_widgets.setItemWidget(lst_item, custom_item)
                 self.track_dict[counter] = elem[2] # saved url to track
@@ -328,9 +342,9 @@ class SearchMusic(QtGui.QWidget):
         counter = 0
         for elem in all_music:
            if len(elem) == 3:
-               custom_item = OneItem(elem[0], elem[1])
+               custom_item = OneItem(elem[0], elem[1], elem[2])
                lst_item = QtGui.QListWidgetItem()
-               lst_item.setSizeHint(QtCore.QSize(lst_item.sizeHint().width(), 25))
+               lst_item.setSizeHint(QtCore.QSize(lst_item.sizeHint().width(), 30))
                self.lst_widgets.addItem(lst_item)
                self.lst_widgets.setItemWidget(lst_item, custom_item)
                self.track_dict[counter] = elem[2] # saved url to track
