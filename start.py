@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from itertools import count
-
 import sys
 import vk
 from PyQt4 import QtCore, QtGui
@@ -31,8 +29,8 @@ class AuthForm(QtGui.QWidget):
 
         # set form to center of screen
         geom = QtGui.QApplication.desktop().screenGeometry()
-        x = (geom.width()-self.width()) / 2
-        y = (geom.height()-self.height()) / 2
+        x = (geom.width()-self.width()/2) / 2
+        y = (geom.height()-self.height()/2) / 2
         self.move(x,y)
 
         lbl_login = QtGui.QLabel("Логин:")
@@ -95,6 +93,7 @@ class AuthForm(QtGui.QWidget):
             mainForm.musicForm.edt_page.setText(loader.id)
             mainForm.imageForm.edt_page.setText(loader.id)
             mainForm.musicForm.set_music_content()
+            mainForm.imageForm.set_image_content()
             mainForm.show()
         else:
             QtGui.QMessageBox.warning(self, "Неверный ввод", "Все поля должны быть заполнены.")
@@ -192,6 +191,8 @@ class UserMusic(QtGui.QWidget):
         self.btn_save_all.clicked.connect(self.to_save_all_clicked)
         btn_cancel = QtGui.QPushButton("Отменить загрузку")
         btn_cancel.clicked.connect(self.to_cancel_clicked)
+        btn_uncheck = QtGui.QPushButton("Убрать выделение")
+        btn_uncheck.clicked.connect(self.uncheck)
 
         lbl_page = QtGui.QLabel("Текущая страница:")
         self.edt_page = QtGui.QLineEdit()
@@ -206,6 +207,7 @@ class UserMusic(QtGui.QWidget):
         layout_btns.addWidget(self.btn_save)
         layout_btns.addWidget(self.btn_save_all)
         layout_btns.addWidget(btn_cancel)
+        layout_btns.addWidget(btn_uncheck)
         layout_btns.addWidget(btn_exit)
 
         self.layout_form = QtGui.QVBoxLayout(self)
@@ -220,9 +222,11 @@ class UserMusic(QtGui.QWidget):
             QtGui.QMessageBox.warning(self, "Ошибка доступа", "Не могу получить данные с указанной страницы.")
             return
         self.loader.id = id_name
-        self.lbl_progress.setText("Идет обновление. Пожалуйста, подождите...")
+        self.lbl_progress.setText("Обновляются данные. Это займет какое-то время.")
         self.btn_save.setEnabled(False)
         self.btn_save_all.setEnabled(False)
+        self.lst_widgets.clear()
+        self.lbl_count.setText("Всего треков:")
         QtGui.QApplication.processEvents()
         self.set_music_content()
             
@@ -246,10 +250,13 @@ class UserMusic(QtGui.QWidget):
                 self.lst_widgets.setItemWidget(lst_item, custom_item)
                 self.track_dict[counter] = elem[2] # saved url to track
                 counter += 1
+
         self.lbl_count.setText("Всего треков: " + str(len(all_music)))
-        self.lbl_progress.setText("")
         self.btn_save.setEnabled(True)
         self.btn_save_all.setEnabled(True)
+        self.lbl_progress.setText("")
+        global WORK
+        WORK = False
 
     def to_save_clicked(self):
         for_loading = []
@@ -302,6 +309,13 @@ class UserMusic(QtGui.QWidget):
 
         self.btn_save_all.setEnabled(True)
         self.btn_save.setEnabled(True)
+
+    def uncheck(self):
+        for i in range(self.lst_widgets.count()):
+            item = self.lst_widgets.item(i)
+            wgt = self.lst_widgets.itemWidget(item)
+            if wgt.chbox.isChecked():
+                wgt.chbox.setChecked(False)
 #######################################################################################################################
 #######################################################################################################################
 class SearchMusic(QtGui.QWidget):
@@ -342,11 +356,14 @@ class SearchMusic(QtGui.QWidget):
         self.btn_save_all.clicked.connect(self.to_save_all_clicked)
         btn_cancel = QtGui.QPushButton("Отменить загрузку")
         btn_cancel.clicked.connect(self.to_cancel_clicked)
+        btn_uncheck = QtGui.QPushButton("Убрать выделение")
+        btn_uncheck.clicked.connect(self.uncheck)
 
         layout_btns = QtGui.QHBoxLayout()
         layout_btns.addWidget(self.btn_save)
         layout_btns.addWidget(self.btn_save_all)
         layout_btns.addWidget(btn_cancel)
+        layout_btns.addWidget(btn_uncheck)
         layout_btns.addWidget(btn_exit)
 
         self.layout_form = QtGui.QVBoxLayout(self)
@@ -434,6 +451,13 @@ class SearchMusic(QtGui.QWidget):
                                                         "Программа завершится в течении нескольких секунд.")
         self.lst_widgets.clear()
         mainForm.close()
+
+    def uncheck(self):
+        for i in range(self.lst_widgets.count()):
+            item = self.lst_widgets.item(i)
+            wgt = self.lst_widgets.itemWidget(item)
+            if wgt.chbox.isChecked():
+                wgt.chbox.setChecked(False)
 #######################################################################################################################
 #######################################################################################################################
 class UserImages(QtGui.QWidget):
@@ -464,6 +488,8 @@ class UserImages(QtGui.QWidget):
         self.btn_save_all.clicked.connect(self.to_save_all_clicked)
         btn_cancel = QtGui.QPushButton("Отменить загрузку")
         btn_cancel.clicked.connect(self.to_cancel_clicked)
+        btn_uncheck = QtGui.QPushButton("Убрать выделение")
+        btn_uncheck.clicked.connect(self.uncheck)
 
         lbl_page = QtGui.QLabel("Текущая страница:")
         self.edt_page = QtGui.QLineEdit()
@@ -478,6 +504,7 @@ class UserImages(QtGui.QWidget):
         layout_btns.addWidget(self.btn_save)
         layout_btns.addWidget(self.btn_save_all)
         layout_btns.addWidget(btn_cancel)
+        layout_btns.addWidget(btn_uncheck)
         layout_btns.addWidget(btn_exit)
 
         self.layout_form = QtGui.QVBoxLayout(self)
@@ -492,9 +519,11 @@ class UserImages(QtGui.QWidget):
             QtGui.QMessageBox.warning(self, "Ошибка доступа", "Не могу получить данные с указанной страницы.")
             return
         self.loader.id = id_name
-        self.lbl_progress.setText("Идет обновление. Пожалуйста, подождите...")
+        self.lbl_progress.setText("Обновляются данные. Это займет какое-то время.")
         self.btn_save.setEnabled(False)
         self.btn_save_all.setEnabled(False)
+        self.lst_widgets.clear()
+        self.lbl_count.setText("Всего фоток:")
         QtGui.QApplication.processEvents()
         self.set_image_content()
 
@@ -584,6 +613,13 @@ class UserImages(QtGui.QWidget):
 
         self.btn_save_all.setEnabled(True)
         self.btn_save.setEnabled(True)
+
+    def uncheck(self):
+        for i in range(self.lst_widgets.count()):
+            item = self.lst_widgets.item(i)
+            wgt = self.lst_widgets.itemWidget(item)
+            if wgt.chbox.isChecked():
+                wgt.chbox.setChecked(False)
 #######################################################################################################################
 #######################################################################################################################
 class MainForm(QtGui.QWidget):
@@ -613,10 +649,6 @@ class MainForm(QtGui.QWidget):
 
         layout_tab = QtGui.QVBoxLayout(self)
         layout_tab.addWidget(tabs)
-
-    #def __del__(self):
-    #      if (os.path.isdir(PREVIEW_FOLDER)):
-    #            shutil.rmtree(PRwe EVIEW_FOLDER)
 #######################################################################################################################
 #######################################################################################################################
 if __name__ == "__main__":
