@@ -228,7 +228,11 @@ class UserMusic(QtGui.QWidget):
         self.lst_widgets.clear()
         self.lbl_count.setText("Всего треков:")
         QtGui.QApplication.processEvents()
-        self.set_music_content()
+        if self.set_music_content() == -1:
+            self.lbl_count.setText("Всего треков: 0")
+            self.lbl_progress.setText("")
+            self.btn_save.setEnabled(True)
+            self.btn_save_all.setEnabled(True)
             
 
     # all_music: 1 - track name; 2 - duration (min:sec); 3 - url
@@ -406,10 +410,16 @@ class SearchMusic(QtGui.QWidget):
         else:
             self.music.offset += self.music.max_sound_count
             
-        val = self.music.search_by_name(search_word, self.loader.app.access_token)
-        if val == -1:
-            return
-
+        if self.music.search_by_name(search_word, self.loader.app.access_token) == -1:
+            if self.music.offset -2* self.music.max_sound_count >= 0:
+                self.music.offset =- 2*self.music.max_sound_count
+                if self.music.search_by_name(search_word, self.loader.app.access_token) == -1:
+                    self.music.offset -= 2*self.music.max_sound_count
+                    return
+            else:
+                self.music.offset -= 2*self.music.max_sound_count
+                return
+          
         lst = self.music.get_list_for_gui()
         self.set_music_content(lst)
 
@@ -525,7 +535,11 @@ class UserImages(QtGui.QWidget):
         self.lst_widgets.clear()
         self.lbl_count.setText("Всего фоток:")
         QtGui.QApplication.processEvents()
-        self.set_image_content()
+        if self.set_image_content() == -1:
+            self.lbl_count.setText("Всего фоток: 0")
+            self.lbl_progress.setText("")
+            self.btn_save.setEnabled(True)
+            self.btn_save_all.setEnabled(True)  
 
     def set_image_content(self):
         #cleaning old data

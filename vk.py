@@ -296,6 +296,8 @@ class Music_loader(Loader):
         for i in range(1, len(json)):
             self.audiolist.append([json[i]["artist"], json[i]["title"], json[i]["url"], json[i]["duration"]])
 
+        if len(self.audiolist) <= 0:
+            return -1
         return 0
 
 
