@@ -179,8 +179,11 @@ class UserMusic(QtGui.QWidget):
         layout_lst.addWidget(self.lst_widgets)
 
         self.lbl_count = QtGui.QLabel("Всего треков: 0")
+        self.btn_sync = QtGui.QPushButton("Синхронизировать")
+        self.btn_sync.clicked.connect(self.sync)
         layout_lbl = QtGui.QHBoxLayout()
         layout_lbl.addWidget(self.lbl_count)
+        layout_lbl.addWidget(self.btn_sync)
         layout_lbl.addWidget(self.lbl_progress)
 
         btn_exit = QtGui.QPushButton("Выйти")
@@ -216,6 +219,44 @@ class UserMusic(QtGui.QWidget):
         self.layout_form.addLayout(layout_page)
         self.layout_form.addLayout(layout_btns)
 
+    def sync(self):
+        dirName = str(QtGui.QFileDialog.getExistingDirectory(self, "Выберите папку для синхронизации музыки"))
+        if dirName != "":
+            old = os.getcwd()
+            os.chdir(dirName)
+            # getting available tracks list
+            all_tracks = []
+            for i in range(self.lst_widgets.count()):
+                wgt = self.lst_widgets.itemWidget(self.lst_widgets.item(i))
+                all_tracks.append(wgt.track+'.mp3')
+            files = [f for f in os.listdir(dirName) if os.path.isfile(f)]
+            diff = list(set(all_tracks) - set(files))
+            for_removing = list(set(files) - set(all_tracks))
+
+            for_loading = []
+            for i in range(self.lst_widgets.count()):
+                wgt = self.lst_widgets.itemWidget(self.lst_widgets.item(i))
+                if wgt.track+'.mp3' in diff:
+                    for_loading.append([wgt.track, self.track_dict[i]])
+
+            if len(for_loading) or len(for_removing) > 0:
+                if len(for_loading) > 0:
+                    msg = "Будет загружено новых треков: "+str(len(for_loading)) + ".\nДождитесь окончания загрузки."
+                    QtGui.QMessageBox.information(self, "Синхронизация", msg)
+                    if dirName != "":
+                        os.chdir(old)
+                        thr = threading.Thread(target=self.load_tracks, args=(for_loading, dirName))
+                        thr.start()
+                if len(for_removing) > 0:
+                    msg = "Будет удалено треков из папки: "+str(len(for_removing)) + ".\nПричина-их нет на сервере ВК."
+                    QtGui.QMessageBox.information(self, "Синхронизация", msg)
+                    for i in range(len(for_removing)):
+                        os.remove(for_removing[i])
+            else:
+                QtGui.QMessageBox.information(self, "Синхронизация", "Синхронизация не требуется.")
+
+            os.chdir(old)
+
     def update_page_content(self, id_name):
         self.loader.app.uid = self.loader.get_uid(id_name, self.loader.app.access_token)
         if self.loader.app.uid == -1:
@@ -238,7 +279,7 @@ class UserMusic(QtGui.QWidget):
     # all_music: 1 - track name; 2 - duration (min:sec); 3 - url
     def set_music_content(self):
         self.lst_widgets.clear()
-		
+
         val = self.music.get(self.loader.app.uid, self.loader.app.access_token)
         if val == -1:
             return -1
@@ -304,6 +345,7 @@ class UserMusic(QtGui.QWidget):
     def load_tracks(self, lst, dir):
         self.btn_save_all.setEnabled(False)
         self.btn_save.setEnabled(False)
+        self.btn_sync.setEnabled(False)
 
         self.music.work = True
         val = self.music.load_tracks_from_list(lst, dir, self.lbl_progress)
@@ -313,6 +355,7 @@ class UserMusic(QtGui.QWidget):
 
         self.btn_save_all.setEnabled(True)
         self.btn_save.setEnabled(True)
+        self.btn_sync.setEnabled(True)
 
     def uncheck(self):
         for i in range(self.lst_widgets.count()):
@@ -667,7 +710,7 @@ class MainForm(QtGui.QWidget):
 #######################################################################################################################
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
-	
+
     auth = AuthForm()
     auth.show()
     mainForm = MainForm()
